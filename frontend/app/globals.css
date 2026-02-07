@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-gray-900 min-h-screen;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Focus visible for keyboard navigation */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-purple-500;
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  /* Container for centered content */
+  .container-app {
+    @apply mx-auto max-w-4xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Form field spacing */
+  .form-field {
+    @apply space-y-1;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:shadow-purple-300/30 hover:-translate-y-1;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 bg-clip-text text-transparent;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Link styles */
+  .link {
+    @apply text-purple-600 hover:text-pink-600 underline underline-offset-2 transition-colors;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-success {
+    @apply badge bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 shadow-green-200/50 shadow-md;
+  }
+
+  .badge-pending {
+    @apply badge bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 shadow-amber-200/50 shadow-md;
+  }
+
+  .badge-completed {
+    @apply badge bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-green-500/30 shadow-md;
+  }
+
+  /* Task card animations */
+  @keyframes slideIn {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes successPulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-success {
+    animation: successPulse 0.6s ease-out;
+  }
+
+  /* Chat message animations */
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slideInRight {
+    0% {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  .animate-slide-left {
+    animation: slideInLeft 0.3s ease-out;
+  }
+
+  /* Typing indicator animation */
+  @keyframes typing {
+    0%, 60%, 100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-4px);
+    }
+  }
+
+  .typing-dot {
+    animation: typing 1.4s infinite ease-in-out;
+  }
+
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Button hover effects */
+  .btn-glow {
+    @apply transition-all duration-200;
+  }
+
+  .btn-glow:hover {
+    @apply shadow-lg shadow-purple-500/30;
+  }
+
+  .btn-glow:active {
+    @apply scale-95;
+  }
+
+  /* Task status colors */
+  .task-completed {
+    @apply border-green-300 bg-gradient-to-r from-green-50/50 to-emerald-50/50;
+  }
+
+  .task-pending {
+    @apply border-purple-200 bg-white;
+  }
+
+  /* Chat bubble styles */
+  .chat-bubble-user {
+    @apply bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl;
+    box-shadow: 0 4px 15px -3px rgba(37, 99, 235, 0.3);
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-white text-gray-800 rounded-2xl border border-gray-200;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+}

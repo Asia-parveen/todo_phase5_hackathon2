@@ -1,0 +1,74 @@
+# Frontend Helm Chart - Development Values
+# Use: helm install frontend helm/frontend -f helm/frontend/values-dev.yaml
+
+# Image configuration for local Minikube development
+image:
+  repository: frontend
+  tag: latest
+  pullPolicy: Never  # Use locally built image in Minikube
+
+# Single replica for development
+replicaCount: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  name: frontend-service
+
+# Development environment variables
+env:
+  # Backend API endpoint (Kubernetes service DNS)
+  NEXT_PUBLIC_API_URL: "http://backend-service:8000"
+
+  # Application configuration
+  ENVIRONMENT: "development"
+
+# Development resource limits (lower for local)
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Health probes
+probes:
+  liveness:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readiness:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 15
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Labels
+labels:
+  app: frontend
+  version: v1

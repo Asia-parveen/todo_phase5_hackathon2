@@ -1,0 +1,133 @@
+openapi: 3.0.0
+info:
+  title: Task API with Filter and Sort
+  version: 1.0.0
+  description: API for managing tasks with filtering and sorting capabilities
+
+paths:
+  /api/v1/tasks:
+    get:
+      summary: List tasks with optional filtering and sorting
+      description: Retrieve a list of tasks with optional filtering and sorting parameters
+      parameters:
+        - name: status
+          in: query
+          description: Filter tasks by status
+          required: false
+          schema:
+            type: string
+            enum: [pending, completed]
+        - name: priority
+          in: query
+          description: Filter tasks by priority
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+        - name: tags
+          in: query
+          description: Filter tasks by tags (multiple allowed)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: has_due_date
+          in: query
+          description: Filter tasks by due date presence
+          required: false
+          schema:
+            type: boolean
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          required: false
+          schema:
+            type: string
+            enum: [created_date, due_date, priority, title]
+        - name: order
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: List of tasks matching the criteria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  total_count:
+                    type: integer
+                  filtered_count:
+                    type: integer
+        '400':
+          description: Invalid parameters provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - priority
+        - created_date
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the task
+        title:
+          type: string
+          description: Task title or description
+        status:
+          type: string
+          enum: [pending, completed]
+          description: Current status of the task
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Priority level of the task
+        tags:
+          type: array
+          items:
+            type: string
+          description: List of tags associated with the task
+        due_date:
+          type: string
+          format: date-time
+          description: Date when the task is due (optional)
+        created_date:
+          type: string
+          format: date-time
+          description: Date when the task was created
+        updated_date:
+          type: string
+          format: date-time
+          description: Last updated timestamp
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error description

@@ -1,0 +1,29 @@
+apiVersion: v2
+name: frontend
+description: Next.js frontend service for Phase IV Todo Chatbot Kubernetes deployment
+type: application
+
+# Chart version follows semantic versioning
+version: 1.0.0
+
+# Application version (corresponds to frontend image tag)
+appVersion: "latest"
+
+# Chart metadata
+keywords:
+  - todo
+  - chatbot
+  - nextjs
+  - kubernetes
+  - react
+
+home: https://github.com/user/todo-phase4
+sources:
+  - https://github.com/user/todo-phase4
+
+maintainers:
+  - name: Development Team
+    url: https://github.com/user/todo-phase4
+
+# Chart dependencies (none for MVP)
+dependencies: []

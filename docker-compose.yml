@@ -1,0 +1,31 @@
+version: '3.9'  # Docker Compose file version
+
+services:
+  backend:
+    image: todo-backend
+    container_name: todo-backend-container
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://neondb_owner:npg_dRZO15ubxlnj@ep-calm-cloud-adyle0re-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+      JWT_SECRET: mfAYgNEVwnpT-xMKFk633qtts9fHF287_6wd9cSyr1w
+      GOOGLE_API_KEY: AIzaSyCV-r0YQSImO9v9AsZl85SNbCqKfo0gwUA
+    networks:
+      - todo-network
+
+  frontend:
+    image: todo-frontend
+    container_name: todo-frontend-container
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - todo-network
+
+networks:
+  todo-network:
+    driver: bridge
+

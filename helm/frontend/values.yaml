@@ -1,0 +1,74 @@
+# Frontend Helm Chart Values
+# These values configure the Next.js frontend deployment for Phase IV
+
+# Image configuration
+image:
+  repository: todo-frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Replica configuration
+replicaCount: 1
+
+# Service configuration
+service:
+  type: NodePort
+  port: 3000
+  targetPort: 3000
+  name: frontend-service
+
+# Pod environment variables
+env:
+  # Backend API endpoint (uses Kubernetes service DNS)
+  NEXT_PUBLIC_API_URL: "http://backend-service:8000"
+
+  # Application configuration
+  ENVIRONMENT: "development"
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Health probe configuration
+probes:
+  liveness:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readiness:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Pod security context (non-root user)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Labels for pod selection
+labels:
+  app: frontend
+  version: v1

@@ -1,0 +1,87 @@
+# Backend Helm Chart - Development Values
+# Use: helm install backend helm/backend -f helm/backend/values-dev.yaml
+
+# Image configuration for local Minikube development
+image:
+  repository: backend
+  tag: latest
+  pullPolicy: Never  # Use locally built image in Minikube
+
+# Single replica for development
+replicaCount: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+  name: backend-service
+
+# Development environment variables
+env:
+  # Database connection (set via --set or environment)
+  DATABASE_URL: ""
+
+  # JWT Configuration
+  JWT_SECRET: "dev-secret-change-in-production"
+  JWT_ALGORITHM: "HS256"
+
+  # Application configuration
+  ENVIRONMENT: "development"
+  LOG_LEVEL: "debug"
+
+  # CORS - allow local frontend
+  CORS_ORIGINS: "http://localhost:3000,http://frontend-service:3000"
+
+  # AI configuration (set via --set-string)
+  GOOGLE_API_KEY: ""
+  GEMINI_MODEL: "gemini-2.5-flash"
+  MAX_CONTEXT_MESSAGES: "20"
+
+# Development resource limits (lower for local)
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# Health probes (same as production)
+probes:
+  liveness:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readiness:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Labels
+labels:
+  app: backend
+  version: v1

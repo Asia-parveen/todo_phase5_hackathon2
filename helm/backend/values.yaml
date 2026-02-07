@@ -1,0 +1,87 @@
+# Backend Helm Chart Values
+# These values configure the FastAPI backend deployment for Phase IV
+
+# Image configuration
+image:
+  repository: todo-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Replica configuration
+replicaCount: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+  name: backend-service
+
+# Pod environment variables
+env:
+  # Database configuration (injected from ConfigMap)
+  DATABASE_URL: ""  # Set via helm install --set
+
+  # JWT Configuration (injected from Secret)
+  JWT_SECRET: ""  # Set via helm install --set-string
+  JWT_ALGORITHM: "HS256"
+
+  # Application configuration
+  ENVIRONMENT: "development"
+  LOG_LEVEL: "info"
+
+  # CORS Configuration
+  CORS_ORIGINS: "http://localhost:3000,https://your-production-domain.com"
+
+  # AI configuration (injected from Secret)
+  GOOGLE_API_KEY: ""  # Set via helm install --set-string
+  GEMINI_MODEL: "gemini-2.5-flash"
+  MAX_CONTEXT_MESSAGES: "20"
+
+# Resource configuration
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Health probe configuration
+probes:
+  liveness:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readiness:
+    httpGet:
+      path: /api/health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Pod security context (non-root user)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Labels for pod selection
+labels:
+  app: backend
+  version: v1
