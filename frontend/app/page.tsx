@@ -10,8 +10,9 @@ export default function HomePage() {
 
   useEffect(() => {
     // Redirect based on auth state
+    // PHASE 5: Redirect to chat (Phase 3/4 UI) as the default landing page
     if (isAuthenticated()) {
-      router.replace("/tasks");
+      router.replace("/chat");
     } else {
       router.replace("/login");
     }

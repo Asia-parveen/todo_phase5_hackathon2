@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Task, TaskCreate, TaskUpdate } from "@/lib/types";
+import { Task, TaskCreate, TaskUpdate, TaskFilterParams } from "@/lib/types";
 import { api, ApiRequestError, getAuthToken } from "@/lib/api";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Loading from "@/components/ui/Loading";
 import TaskForm from "@/components/tasks/TaskForm";
+// PHASE 5 ADDITION – SAFE: Import new components
+import TaskFilters from "@/components/tasks/TaskFilters";
+import TaskBadges from "@/components/tasks/TaskBadges";
 
 export default function TasksPage() {
   const router = useRouter();
@@ -20,15 +23,17 @@ export default function TasksPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // PHASE 5 ADDITION – SAFE: State for filters and search
+  const [activeFilters, setActiveFilters] = useState<TaskFilterParams>({});
+  const [searchQuery, setSearchQuery] = useState<string | undefined>();
+  // PHASE 5 ADDITION – SAFE: Edit mode Phase 5 fields
+  const [editPriority, setEditPriority] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editTags, setEditTags] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState("");
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchTasks();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const fetchTasks = async () => {
+  // PHASE 5 ADDITION – SAFE: Enhanced fetch with filter/search support
+  const fetchTasks = useCallback(async (filters?: TaskFilterParams, query?: string) => {
     const token = getAuthToken();
     if (!token) {
       router.replace("/login");
@@ -38,7 +43,35 @@ export default function TasksPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await api.get<Task[]>("/api/tasks");
+
+      // PHASE 5 ADDITION – SAFE: Build query string for filters
+      const params = new URLSearchParams();
+
+      // If search query exists, use search endpoint
+      if (query && query.trim()) {
+        params.append("query", query.trim());
+      }
+
+      // Add filter parameters
+      if (filters?.status) params.append("status", filters.status);
+      if (filters?.priority) params.append("priority", filters.priority);
+      if (filters?.tags && filters.tags.length > 0) {
+        filters.tags.forEach(tag => params.append("tags", tag));
+      }
+      if (filters?.has_due_date !== undefined) {
+        params.append("has_due_date", String(filters.has_due_date));
+      }
+      if (filters?.sort_by) params.append("sort_by", filters.sort_by);
+      if (filters?.order) params.append("order", filters.order);
+
+      const queryString = params.toString();
+
+      // Use search endpoint if query exists, otherwise use tasks endpoint
+      const endpoint = query && query.trim()
+        ? `/api/search/search${queryString ? `?${queryString}` : ""}`
+        : `/api/tasks${queryString ? `?${queryString}` : ""}`;
+
+      const data = await api.get<Task[]>(endpoint);
       setTasks(data);
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -53,10 +86,41 @@ export default function TasksPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  const handleCreateTask = async (title: string, description?: string) => {
-    const taskData: TaskCreate = { title, description };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchTasks(activeFilters, searchQuery);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [fetchTasks, activeFilters, searchQuery]);
+
+  // PHASE 5 ADDITION – SAFE: Handler for filter changes
+  const handleFilterChange = useCallback((filters: TaskFilterParams, query?: string) => {
+    setActiveFilters(filters);
+    setSearchQuery(query);
+  }, []);
+
+  // PHASE 5 ADDITION – SAFE: Extended to accept Phase 5 fields
+  interface Phase5Data {
+    priority?: string;
+    due_date?: string | null;
+    tags?: string[] | null;
+    recurrence_pattern?: string | null;
+  }
+
+  const handleCreateTask = async (title: string, description?: string, phase5Data?: Phase5Data) => {
+    const taskData: TaskCreate = {
+      title,
+      description,
+      // PHASE 5 ADDITION – SAFE: Spread Phase 5 data if provided
+      ...(phase5Data && {
+        priority: phase5Data.priority as TaskCreate["priority"],
+        due_date: phase5Data.due_date,
+        tags: phase5Data.tags,
+        recurrence_pattern: phase5Data.recurrence_pattern as TaskCreate["recurrence_pattern"],
+      }),
+    };
     const newTask = await api.post<Task>("/api/tasks", taskData);
     setTasks([newTask, ...tasks]);
     setShowForm(false);
@@ -92,12 +156,22 @@ export default function TasksPage() {
     setEditingTask(task);
     setEditTitle(task.title);
     setEditDescription(task.description || "");
+    // PHASE 5 ADDITION – SAFE: Initialize Phase 5 fields for editing
+    setEditPriority(task.priority || "");
+    setEditDueDate(task.due_date ? task.due_date.split("T")[0] : "");
+    setEditTags(task.tags ? task.tags.join(", ") : "");
+    setEditRecurrence(task.recurrence_pattern || "");
   };
 
   const cancelEditing = () => {
     setEditingTask(null);
     setEditTitle("");
     setEditDescription("");
+    // PHASE 5 ADDITION – SAFE: Clear Phase 5 edit fields
+    setEditPriority("");
+    setEditDueDate("");
+    setEditTags("");
+    setEditRecurrence("");
   };
 
   const handleUpdateTask = async () => {
@@ -112,6 +186,15 @@ export default function TasksPage() {
       const updateData: TaskUpdate = {
         title: editTitle.trim(),
         description: editDescription.trim() || null,
+        // PHASE 5 ADDITION – SAFE: Include Phase 5 fields in update
+        priority: editPriority ? (editPriority as TaskUpdate["priority"]) : undefined,
+        due_date: editDueDate ? new Date(editDueDate).toISOString() : null,
+        tags: editTags.trim()
+          ? editTags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+          : null,
+        recurrence_pattern: editRecurrence
+          ? (editRecurrence as TaskUpdate["recurrence_pattern"])
+          : null,
       };
       const updatedTask = await api.put<Task>(
         `/api/tasks/${editingTask.id}`,
@@ -143,7 +226,7 @@ export default function TasksPage() {
           <div className="text-center py-8">
             <p className="text-red-600 mb-4">{error}</p>
             <button
-              onClick={fetchTasks}
+              onClick={() => fetchTasks(activeFilters, searchQuery)}
               className="btn-glow text-purple-600 hover:text-pink-600 font-medium transition-colors"
             >
               Try again
@@ -213,6 +296,13 @@ export default function TasksPage() {
           )}
         </div>
       </div>
+
+      {/* PHASE 5 ADDITION – SAFE: Filter/Search Panel */}
+      <TaskFilters
+        onFilterChange={handleFilterChange}
+        initialFilters={activeFilters}
+        availableTags={Array.from(new Set(tasks.flatMap((t) => t.tags || [])))}
+      />
 
       {/* Create Task Form */}
       {showForm && (
@@ -300,6 +390,55 @@ export default function TasksPage() {
                         className="block w-full rounded-xl border-2 border-purple-200 px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 sm:text-sm transition-all duration-300 bg-white/50 hover:border-purple-300"
                       />
                     </div>
+                    {/* PHASE 5 ADDITION – SAFE: Edit Phase 5 fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-purple-100">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                        <select
+                          value={editPriority}
+                          onChange={(e) => setEditPriority(e.target.value)}
+                          className="block w-full rounded-xl border-2 border-purple-200 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all duration-300 bg-white/50 hover:border-purple-300 text-sm"
+                        >
+                          <option value="">Default (Medium)</option>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                        <input
+                          type="date"
+                          value={editDueDate}
+                          onChange={(e) => setEditDueDate(e.target.value)}
+                          className="block w-full rounded-xl border-2 border-purple-200 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all duration-300 bg-white/50 hover:border-purple-300 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                        <input
+                          type="text"
+                          value={editTags}
+                          onChange={(e) => setEditTags(e.target.value)}
+                          placeholder="work, urgent"
+                          className="block w-full rounded-xl border-2 border-purple-200 px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all duration-300 bg-white/50 hover:border-purple-300 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Repeat</label>
+                        <select
+                          value={editRecurrence}
+                          onChange={(e) => setEditRecurrence(e.target.value)}
+                          className="block w-full rounded-xl border-2 border-purple-200 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all duration-300 bg-white/50 hover:border-purple-300 text-sm"
+                        >
+                          <option value="">No repeat</option>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleUpdateTask} className="btn-glow">
                         Save Changes
@@ -358,6 +497,9 @@ export default function TasksPage() {
                           {task.description}
                         </p>
                       )}
+
+                      {/* PHASE 5 ADDITION – SAFE: Display priority, due date, tags, recurrence badges */}
+                      <TaskBadges task={task} />
 
                       {/* Task ID Badge */}
                       <div className="mt-3">
