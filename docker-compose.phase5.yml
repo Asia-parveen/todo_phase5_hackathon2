@@ -1,0 +1,140 @@
+# Phase 5: Event-Driven Architecture with Kafka + Dapr
+#
+# This compose file combines:
+# - Phase 4 app images (todo-backend, todo-frontend) - REUSED, no rebuild needed
+# - Infrastructure services (Kafka, Zookeeper, Redis, Dapr)
+#
+# PULL FAILURE WORKAROUNDS:
+# 1. If Cloudflare EOF errors occur, retry: docker-compose pull --ignore-pull-failures
+# 2. Use mirror: Set DOCKER_REGISTRY_MIRROR in daemon.json
+# 3. Pull images individually: docker pull confluentinc/cp-kafka:7.5.0
+# 4. Run without Kafka/Dapr first (app works without events)
+
+version: '3.9'
+
+services:
+  # ==================== INFRASTRUCTURE SERVICES ====================
+
+  # Redis - State store for Dapr
+  redis:
+    image: redis:7-alpine
+    container_name: todo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - todo-network
+    restart: unless-stopped
+
+  # Zookeeper - Required by Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: todo-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - todo-network
+    restart: unless-stopped
+
+  # Kafka - Message broker for events
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: todo-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - todo-network
+    restart: unless-stopped
+
+  # Dapr Placement Service - For actor support
+  dapr-placement:
+    image: daprio/dapr:1.13.0
+    container_name: todo-dapr-placement
+    command: ["./placement", "-port", "50005"]
+    ports:
+      - "50005:50005"
+    networks:
+      - todo-network
+    restart: unless-stopped
+
+  # ==================== APPLICATION SERVICES ====================
+
+  # Backend API with Dapr sidecar
+  backend:
+    image: todo-backend
+    container_name: todo-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      DAPR_HTTP_PORT: 3500
+    networks:
+      - todo-network
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - kafka
+
+  # Dapr sidecar for backend
+  backend-dapr:
+    image: daprio/dapr:1.13.0
+    container_name: todo-backend-dapr
+    command:
+      - "./daprd"
+      - "-app-id"
+      - "todo-service"
+      - "-app-port"
+      - "8000"
+      - "-dapr-http-port"
+      - "3500"
+      - "-dapr-grpc-port"
+      - "50001"
+      - "-placement-host-address"
+      - "dapr-placement:50005"
+      - "-components-path"
+      - "/components"
+    volumes:
+      - ./backend/dapr/components:/components:ro
+    network_mode: "service:backend"
+    depends_on:
+      - backend
+      - dapr-placement
+      - kafka
+      - redis
+    restart: unless-stopped
+
+  # Frontend - No changes needed
+  frontend:
+    image: todo-frontend
+    container_name: todo-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - todo-network
+    restart: unless-stopped
+
+networks:
+  todo-network:
+    driver: bridge
+
+volumes:
+  redis-data:
